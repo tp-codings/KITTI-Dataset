@@ -22,7 +22,7 @@ class single_raw:
         file_path = os.path.join(self.velo_path, next_frame + ".bin")
         if not os.path.exists(file_path):
             next_frame = self.currentFrame
-            print(next_frame)
+            #print(next_frame)
         return scan.reshape((-1, 4)), next_frame
     
     @property
