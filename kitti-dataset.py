@@ -1,9 +1,9 @@
 import numpy as np
 import pykitti
-from data import parseTrackletXML as xmlParser
+from utils import parseTrackletXML as xmlParser
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from data.utilities import print_progress
+from utils.utilities import print_progress
 from moviepy.editor import ImageSequenceClip
 from matplotlib.animation import FuncAnimation
 

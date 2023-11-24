@@ -124,7 +124,7 @@ def load_tracklets_for_frames(n_frames, xml_path):
                 [0.0, 0.0, 1.0]
             ])
             cornerPosInVelo = np.dot(rotMat, trackletBox) + np.tile(translation, (8, 1)).T
-            frame_tracklets[n_frames] = frame_tracklets[absoluteFrameNumber] + [cornerPosInVelo]
+            frame_tracklets[absoluteFrameNumber] = frame_tracklets[absoluteFrameNumber] + [cornerPosInVelo]
             frame_tracklets_types[absoluteFrameNumber] = frame_tracklets_types[absoluteFrameNumber] + [tracklet.objectType]
 
     return (frame_tracklets, frame_tracklets_types)

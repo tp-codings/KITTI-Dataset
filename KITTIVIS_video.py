@@ -49,7 +49,6 @@ def draw_pygame_box(vertices, axes=[0, 1, 2], color=(0, 0, 0)):
 
 def update_pygame(frame, dataset_velo, tracklet_rects, tracklet_types, colors, points=1.0, rotation_angles=(0, 0, 0), dragging=False, initial_mouse_pos=None, zoom_factor=1.0):
 
-    print(dragging)
     if dragging:
         rel_x, rel_y = pygame.mouse.get_pos()[0] - initial_mouse_pos[0], pygame.mouse.get_pos()[1] - initial_mouse_pos[1]
         rotation_angles = (
@@ -157,5 +156,4 @@ if __name__ == "__main__":
     drive = '0051'
     dataset = load_dataset(basedir, date, drive, calibrated=False)
     tracklet_rects, tracklet_types = load_tracklets_for_frames(len(list(dataset.velo)), 'data/{}/{}_drive_{}_sync/tracklet_labels.xml'.format(date, date, drive))
-
     draw_3d_plots_pygame(dataset, tracklet_rects, tracklet_types)

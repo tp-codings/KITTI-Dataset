@@ -93,8 +93,8 @@ def update_pygame(dataset_velo, tracklet_rects, tracklet_types, colors, points=1
     points_step = int(1. / points)
     velo_range = range(0, dataset_velo.shape[0], points_step)
 
-    vbo = load_point_vbo(dataset_velo[velo_range, :-1])
 
+    vbo = load_point_vbo(dataset_velo[velo_range, :-1])
     glEnableClientState(GL_VERTEX_ARRAY)
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
