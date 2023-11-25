@@ -108,22 +108,6 @@ def render_splash(image, position, scale, detections):
     glVertex2f(bl[0], bl[1])  # Unten links
     glEnd()
 
-    for detection in detections:
-        x, y, w, h = detection
-        x *= scale  # Skaliere die x-Position entsprechend
-        y *= scale  # Skaliere die y-Position entsprechend
-        w *= scale  # Skaliere die Breite entsprechend
-        h *= scale  # Skaliere die Höhe entsprechend
-        
-        # Zeichne ein rotes Rechteck
-        glBegin(GL_QUADS)
-        glColor3f(1.0, 0.0, 0.0)  # Rot (RGB)
-        glVertex2f(tl[0]+x, tl[1]+y)           # Oben links
-        glVertex2f(tr[0]+x + w, tr[1]+y)       # Oben rechts
-        glVertex2f(bl[0]+x + w, bl[1]+ y - h)    # Unten rechts
-        glVertex2f(br[0]+x, br[1] +y - h)        # Unten links
-        glEnd()
-
     glDeleteTextures([texture_id])
     glDisable(GL_TEXTURE_2D)
     
