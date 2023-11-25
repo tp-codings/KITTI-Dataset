@@ -12,6 +12,9 @@ class single_raw:
     def __init__(self, basedir, currentFrame, **kwargs):
         self.velo_path = os.path.join(basedir, "Live", "velodyne_points", "data")
         self.cam00_path = os.path.join(basedir, "Live", "image_00", "data")
+        self.cam01_path = os.path.join(basedir, "Live", "image_01", "data")
+        self.cam02_path = os.path.join(basedir, "Live", "image_02", "data")
+        self.cam03_path = os.path.join(basedir, "Live", "image_03", "data")
 
         self.oxts_path = os.path.join(basedir, "Live", "oxts", "data")
         self.calib_path = os.path.join(basedir, "Live")
@@ -50,7 +53,24 @@ class single_raw:
         file_path = os.path.join(self.cam00_path, self.currentFrame + ".png")
 
         return pygame.image.load(file_path).convert()
+    @property
+    def cam01(self):
+        """Generator to read image files for cam0 (monochrome left)."""
+        file_path = os.path.join(self.cam01_path, self.currentFrame + ".png")
 
+        return pygame.image.load(file_path).convert()
+    @property
+    def cam02(self):
+        """Generator to read image files for cam0 (monochrome left)."""
+        file_path = os.path.join(self.cam02_path, self.currentFrame + ".png")
+
+        return pygame.image.load(file_path).convert()
+    @property
+    def cam03(self):
+        """Generator to read image files for cam0 (monochrome left)."""
+        file_path = os.path.join(self.cam03_path, self.currentFrame + ".png")
+
+        return pygame.image.load(file_path).convert()
 
     def transform_from_rot_trans(R, t):
         """Transforation matrix from rotation matrix and translation vector."""

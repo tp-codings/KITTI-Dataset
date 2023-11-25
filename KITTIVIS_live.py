@@ -7,13 +7,13 @@ from utils.drawing import render_text, draw_pygame_box
 from utils.sceneManip import rotate_scene
 from utils.openglSetup import init
 from utils.settings import colors, basedir
-from utils.getGeo import get_maxspeed, get_location
+#from utils.getGeo import get_maxspeed, get_location
 import pygame
 from OpenGL.GL import shaders
 import numpy as np
 from ctypes import sizeof, c_float, c_void_p
-
-from io import BytesIO
+from glm import mat4, scale, translate, rotate, perspective, lookAt, vec3
+from ultralytics import YOLO
 
 
 # Vertex and Fragment Shader source code
@@ -78,98 +78,54 @@ def init_shader_program():
     glDeleteShader(vertex_shader_obj)
     glDeleteShader(fragment_shader_obj)
 
-def render_splash(image):
-       # using resources in open gl generally follows the form of generate, bind, modify
+def render_splash(image, position, scale, detections):
+    x = position[0]
+    y = position[1]
+    width, height = image.get_width(), image.get_height()
+    texture_data = pygame.image.tostring(image, "RGBA", True)
 
-    # Generate: request a buffer for our vertices
-    image_vbo = glGenBuffers(2)
+    glEnable(GL_TEXTURE_2D)
+    texture_id = glGenTextures(1)
+    glBindTexture(GL_TEXTURE_2D, texture_id)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
-    # Bind: set the newly requested buffer as the active GL_ARRAY_BUFFER. 
-    #   All subsequent modifications of GL_ARRAY_BUFFER will affect our vbo
-    glBindBuffer(GL_ARRAY_BUFFER, image_vbo)
+    tl = (x/20, y/20)
+    tr = (x/20 + width*scale/20, y/20)
 
-    # Modify: Tell OpenGL to load data into the buffer. 
+    br = (x/20 + width*scale/20, y/20 - height*scale/20)
+    bl = (x/20, y/20 - height*scale/20)
 
-    # I've added two more coordinates to each vertex here for determining the position within the texture.
-    # These two additional coordinates are typically refered to as uv coordinates.
-    # Also there are now two triangles that cover the entire viewport.
-    vertex_data = np.array([-1, 0.6, 0, 0,  -1, 1, 0, 1,  1, 1, 1, 1,  -1, 0.6, 0, 0,  1, 1, 1, 1,  1, 0.6, 1, 0], np.float32)
-    glBufferData(GL_ARRAY_BUFFER, vertex_data, GL_STATIC_DRAW)
+    glBegin(GL_QUADS)
+    glTexCoord2f(0, 1)
+    glVertex2f(tl[0], tl[1])  # Oben links
+    glTexCoord2f(1, 1)
+    glVertex2f(tr[0], tr[1])  # Oben rechts
+    glTexCoord2f(1, 0)
+    glVertex2f(br[0], br[1])  # Unten rechts
+    glTexCoord2f(0, 0)
+    glVertex2f(bl[0], bl[1])  # Unten links
+    glEnd()
 
-    vertex_position_attribute_location = 0
-    uv_attribute_location = 1
+    for detection in detections:
+        x, y, w, h = detection
+        x *= scale  # Skaliere die x-Position entsprechend
+        y *= scale  # Skaliere die y-Position entsprechend
+        w *= scale  # Skaliere die Breite entsprechend
+        h *= scale  # Skaliere die Höhe entsprechend
+        
+        # Zeichne ein rotes Rechteck
+        glBegin(GL_QUADS)
+        glColor3f(1.0, 0.0, 0.0)  # Rot (RGB)
+        glVertex2f(tl[0]+x, tl[1]+y)           # Oben links
+        glVertex2f(tr[0]+x + w, tr[1]+y)       # Oben rechts
+        glVertex2f(bl[0]+x + w, bl[1]+ y - h)    # Unten rechts
+        glVertex2f(br[0]+x, br[1] +y - h)        # Unten links
+        glEnd()
 
-    # glVertexAttribPointer basically works in the same way as glVertexPointer with two exceptions:
-    #   First, it can be used to set the data source for any vertex attributes.
-    #   Second, it has an option to normalize the data, which I have set to GL_FALSE.
-    glVertexAttribPointer(vertex_position_attribute_location, 2, GL_FLOAT, GL_FALSE, sizeof(c_float)*4, c_void_p(0))
-    # vertex attributes need to be enabled
-    glEnableVertexAttribArray(0)
-    glVertexAttribPointer(uv_attribute_location, 2, GL_FLOAT, GL_FALSE, sizeof(c_float)*4, c_void_p(sizeof(c_float)*2))
-    glEnableVertexAttribArray(1)
-
-    # Generate: request a texture
-    image_texture = glGenTextures(1)
-
-    # Bind: set the newly requested texture as the active GL_TEXTURE_2D.
-    #   All subsequent modifications of GL_TEXTURE_2D will affect our texture (or how it is used)
-    glBindTexture(GL_TEXTURE_2D, image_texture)
-
-
-    width = image.get_width()
-    height = image.get_height()
-
-    # retrieve a byte string representation of the image.
-    # The 3rd parameter tells pygame to return a vertically flipped image, as the coordinate system used
-    # by pygame differs from that used by OpenGL
-    image_data = pygame.image.tostring(image, "RGBA", True)
-
-    # Modify: Tell OpenGL to load data into the image
-    mip_map_level = 0
-    glTexImage2D(GL_TEXTURE_2D, mip_map_level, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data)
-
-    # set the filtering mode for the texture
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-
-    image_vertex_shader = shaders.compileShader("""
-        #version 330
-        layout(location = 0) in vec2 pos;
-        layout(location = 1) in vec2 uvIn;
-        out vec2 uv;
-        void main() {
-            gl_Position = vec4(pos, 0, 1);
-            uv = uvIn;
-        }
-        """, GL_VERTEX_SHADER)
-
-    image_fragment_shader = shaders.compileShader("""
-        #version 330
-        out vec4 fragColor;
-        in vec2 uv;
-        uniform sampler2D tex;
-        void main() {
-            fragColor = texture(tex, uv);
-        }
-    """, GL_FRAGMENT_SHADER)
-
-    shader_program_2 = shaders.compileProgram(image_vertex_shader, image_fragment_shader)
-
-
-    #glEnableClientState(GL_VERTEX_ARRAY)
-
-    # Enable alpha blending
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-    glUseProgram(shader_program_2)
-
-    glDrawArrays(GL_TRIANGLES, 0, 6)
-
-    #glDisableClientState(GL_VERTEX_ARRAY)
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0)
-    glUseProgram(0)
+    glDeleteTextures([texture_id])
+    glDisable(GL_TEXTURE_2D)
     
     
 def update_pygame(dataset_velo, tracklet_rects, tracklet_types, colors, points=1.0, rotation_angles=(0, 0, 0), dragging=False, initial_mouse_pos=None, zoom_factor=1.0):
@@ -193,7 +149,6 @@ def update_pygame(dataset_velo, tracklet_rects, tracklet_types, colors, points=1
 
     vbo = load_point_vbo(dataset_velo[velo_range, :-1])
 
-    glEnableClientState(GL_VERTEX_ARRAY)
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
     glVertexPointer(3, GL_FLOAT, 0, None)
     glUseProgram(shader_program)
@@ -204,13 +159,14 @@ def update_pygame(dataset_velo, tracklet_rects, tracklet_types, colors, points=1
     glUniformMatrix4fv(modelviewprojection_loc, 1, GL_FALSE, np.dot(projection, modelviewprojection))
 
     glPointSize(1.5)
-
     num_points = len(velo_range)
+    #print(num_points)
     if num_points > 0:
         glDrawArrays(GL_POINTS, 0, num_points)
-    glDisableClientState(GL_VERTEX_ARRAY)
 
     # Deaktiviere die Shader und Vertex-Attributarrays
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+
     glUseProgram(0)
 
     if tracklet_rects is not None and tracklet_types is not None:
@@ -224,6 +180,9 @@ def update_pygame(dataset_velo, tracklet_rects, tracklet_types, colors, points=1
 
 
 def draw_3d_plots_pygame(points=1.0):
+    model = YOLO("YoloWeights/yolov8n.pt")
+
+    classNames = model.names
     pygame.init()
     display = (800, 1000)
 
@@ -251,19 +210,41 @@ def draw_3d_plots_pygame(points=1.0):
     #tracklet_rects, tracklet_types = simulate_tracklets()
 
     while running:
-        clock.tick(30)  # Limit to 60 frames per second
+
+        clock.tick(20)  
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glClearColor(0.0, 0.0, 0.0, 1.0)
         data = load_current_data(basedir, next_frame, calibrated=False)
 
         data_velo, next_frame = data.velo
         latitude, longitude, height = data.oxts
-        cam00 = data.cam00
+        #cam00 = data.cam00
+        #cam01 = data.cam01
+        cam02 = data.cam02
+        #cam03 = data.cam03
 
-        print(cam00)
+        imgdata = pygame.surfarray.array3d(cam02)
+        imgdata = imgdata.swapaxes(0,1)
+        results = model(imgdata, stream=True)
+
+        detections = []
+
+        for r in results:
+            boxes = r.boxes
+            for box in boxes:
+
+                #Boundingbox
+                x1, y1, x2, y2 = box.xyxy[0]
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                # cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 3) #cv2
+                w, h = x2-x1, y2-y1
+                print(w, h)
+                detections.append((x1, y1, w, h))
 
 
 
+
+        #print(cam00)
 
         if last_frame != next_frame:
             #tracklet_rects, tracklet_types = simulate_tracklets()
@@ -291,27 +272,33 @@ def draw_3d_plots_pygame(points=1.0):
         fps = clock.get_fps()
 
         current_time = pygame.time.get_ticks()
-        if current_time - last_update_time >= 50000:
-            location = str(get_location(latitude, longitude))
-            speed_limit = str(get_maxspeed(str(latitude), str(longitude), str(100)))
-            last_update_time = current_time
+        # if current_time - last_update_time >= 50000:
+        #     location = str(get_location(latitude, longitude))
+        #     speed_limit = str(get_maxspeed(str(latitude), str(longitude), str(100)))
+        #     last_update_time = current_time
 
-        elif first_frame: 
-            location = str(get_location(latitude, longitude))
-            speed_limit = str(get_maxspeed(str(latitude), str(longitude), str(100)))
-            first_frame = False
+        # elif first_frame: 
+        #     location = str(get_location(latitude, longitude))
+        #     speed_limit = str(get_maxspeed(str(latitude), str(longitude), str(100)))
+        #     first_frame = False
 
 
         render_text(-35, 25, str(round(fps, 2)))
         render_text(-35, 23, "Latitude: " + str(round(latitude, 6)))
         render_text(-35, 21, "Longitude: " + str(round(longitude, 6)))
         render_text(-35, 19, "Height: " + str(round(height, 2)))
-        render_text(-35, 17, "Ort: " + location)
-        render_text(-35, 15, "Speedlimit: " + speed_limit)
+        #render_text(-35, 17, "Ort: " + location)
+        #render_text(-35, 15, "Speedlimit: " + speed_limit)
 
-
+        glEnableClientState(GL_VERTEX_ARRAY)
         rotation_angles, dragging, initial_mouse_pos, zoom_factor = update_pygame(data_velo, tracklet_rects, tracklet_types, colors, 1.0, rotation_angles, dragging, initial_mouse_pos, zoom_factor)
-        render_splash(cam00)
+        glDisableClientState(GL_VERTEX_ARRAY)
+        # render_splash(cam00, (-800, display[1]/2+100), 0.5)
+        # render_splash(cam01, (200, display[1]/2+100), 0.5)
+        # render_splash(cam02, (-800, display[1]/2-100), 0.5)
+        # render_splash(cam03, (200, display[1]/2-100), 0.5)
+        render_splash(cam02, (200, display[1]/2+100), 0.5, detections)
+
         
 
         pygame.display.flip()
