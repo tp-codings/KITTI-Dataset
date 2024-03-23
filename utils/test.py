@@ -1,51 +1,72 @@
 import pygame
 from pygame.locals import *
 from OpenGL.GL import *
-from OpenGL.GLU import *
 from OpenGL.GLUT import *
+import numpy as np
 
-def render_splash(image):
-    width, height = image.get_width(), image.get_height()
-    texture_data = pygame.image.tostring(image, "RGBA", True)
+# Funktion zum Erstellen eines Vertex Buffer Objects (VBO) für die Punktwolke
+def create_point_vbo():
+    points = np.array([
+        [0, 0, 0],
+        [1, 1, 1],
+        # Füge weitere Punkte hinzu...
+    ], dtype=np.float32)
 
-    glEnable(GL_TEXTURE_2D)
-    texture_id = glGenTextures(1)
-    glBindTexture(GL_TEXTURE_2D, texture_id)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    vbo_id = glGenBuffers(1)
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id)
+    glBufferData(GL_ARRAY_BUFFER, points.nbytes, points, GL_STATIC_DRAW)
 
+    return vbo_id
+
+# Funktion zum Zeichnen der Punktwolke mit VBO
+def draw_points_with_vbo(vbo_id):
+    glEnableClientState(GL_VERTEX_ARRAY)
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id)
+    glVertexPointer(3, GL_FLOAT, 0, None)
+
+    glColor3f(1.0, 1.0, 1.0)
+    glDrawArrays(GL_POINTS, 0, 2)  # Anzahl der Punkte anpassen
+
+    glDisableClientState(GL_VERTEX_ARRAY)
+
+# Funktion zum Zeichnen des 2D-Rechtecks am oberen Rand
+def draw_2d_rectangle():
     glBegin(GL_QUADS)
-    glTexCoord2f(0, 0)
-    glVertex2f(-1, -1)
-    glTexCoord2f(1, 0)
-    glVertex2f(1, -1)
-    glTexCoord2f(1, 1)
+    glColor3f(0.0, 1.0, 0.0)
+
+    glVertex2f(0, 0.9)
+    glVertex2f(1, 0.9)
     glVertex2f(1, 1)
-    glTexCoord2f(0, 1)
-    glVertex2f(-1, 1)
+    glVertex2f(0, 1)
+
     glEnd()
 
-    glDeleteTextures([texture_id])
-    glDisable(GL_TEXTURE_2D)
-
-# Initialisiere Pygame und OpenGL
+# Pygame Initialisierung
 pygame.init()
 display = (800, 600)
 pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
 
-# Lade ein Bild
-image_path = "Background.png"
-image_surface = pygame.image.load(image_path)
+# OpenGL Initialisierung
+glOrtho(0, 1, 0, 1, -1, 1)  # Orthografische Projektion für 2D
+glTranslatef(0.0, 0.0, -5)
 
-# Setze die Perspektive
-gluOrtho2D(-1, 1, -1, 1)
+# VBO für Punktwolke erstellen
+point_vbo_id = create_point_vbo()
 
-# Rendere das Bild
-render_splash(image_surface)
-
-# Hauptloop
+# Haupt-Event-Schleife
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
+            quit()
+
+    glRotatef(1, 3, 1, 1)
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+    draw_points_with_vbo(point_vbo_id)
+    
+    glLoadIdentity()  # Zurücksetzen der Modellview-Matrix für 2D-Zeichnungen
+    draw_2d_rectangle()
+
+    pygame.display.flip()
+    pygame.time.wait(10)

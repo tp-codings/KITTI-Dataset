@@ -231,7 +231,7 @@ def draw_3d_plots_pygame(points=1.0):
         #print(cam00)
 
         if last_frame != next_frame:
-            #tracklet_rects, tracklet_types = simulate_tracklets()
+            tracklet_rects, tracklet_types = simulate_tracklets()
             last_frame = next_frame
 
 
@@ -267,10 +267,7 @@ def draw_3d_plots_pygame(points=1.0):
         #     first_frame = False
 
 
-        render_text(-35, 25, str(round(fps, 2)))
-        render_text(-35, 23, "Latitude: " + str(round(latitude, 6)))
-        render_text(-35, 21, "Longitude: " + str(round(longitude, 6)))
-        render_text(-35, 19, "Height: " + str(round(height, 2)))
+
         #render_text(-35, 17, "Ort: " + location)
         #render_text(-35, 15, "Speedlimit: " + speed_limit)
 
